@@ -108,6 +108,25 @@ class YamlSource
 
                     if (is_array($loadedConfiguration)) {
                         $configuration = Arrays::arrayMergeRecursiveOverrule($configuration, $loadedConfiguration);
+
+                        $configurationOverwrite = array();
+                        foreach ($configuration as $nodeTypeName => $nodeTypeConfiguration) {
+                            if (array_key_exists('properties', $nodeTypeConfiguration)) {
+                                foreach ($nodeTypeConfiguration['properties'] as $propertyName => $propertyConfiguration) {
+                                    if (strpos($propertyName, ' < ')!==false) {
+                                        $explodedPropertyName = explode(' < ', $propertyName);
+                                        if (count($explodedPropertyName) > 0 && isset($configuration[$nodeTypeName]['properties'][$explodedPropertyName[1]])) {
+                                            $configurationOverwrite[$nodeTypeName]['properties'][$explodedPropertyName[0]] = Arrays::arrayMergeRecursiveOverrule(
+                                                isset($configuration[$nodeTypeName]['properties'][$explodedPropertyName[1]]) ? $configuration[$nodeTypeName]['properties'][$explodedPropertyName[1]] : array(),
+                                                $propertyConfiguration
+                                            );
+                                            unset($configuration[$nodeTypeName]['properties'][$propertyName]);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        $configuration = Arrays::arrayMergeRecursiveOverrule($configuration, $configurationOverwrite);
                     }
                 } catch (Exception $exception) {
                     throw new ParseErrorException('A parse error occurred while parsing file "' . $pathAndFilename . '". Error message: ' . $exception->getMessage(), 1232014321);
